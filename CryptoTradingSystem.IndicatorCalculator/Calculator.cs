@@ -83,8 +83,6 @@ namespace CryptoTradingSystem.IndicatorCalculator
                         lastAssetCloseTime = quotesToCheck.Last()!.Date;
                     }
 
-                    quotesToCheck.Clear();
-
                     #region pass indicators to List matched to AssetId
 
                     foreach (var quoteEntry in quotes)
@@ -115,7 +113,12 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     #endregion
 
-                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
+                    if (quotesToCheck.Count == amountOfData)
+                    {
+                        Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
+                    }
+
+                    quotesToCheck.Clear();
 
                     Task.Delay(2000).GetAwaiter().GetResult();
                 }

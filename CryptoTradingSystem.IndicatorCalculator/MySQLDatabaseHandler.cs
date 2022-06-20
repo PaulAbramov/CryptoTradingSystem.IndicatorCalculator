@@ -49,7 +49,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
             try
             {
-                using CryptoTradingBotContext contextDB = new CryptoTradingBotContext(connectionString);
+                using CryptoTradingSystemContext contextDB = new CryptoTradingSystemContext(connectionString);
 
                 var candlesToCalculate = contextDB.Assets.Where(x => x.AssetName == _asset.GetStringValue() && x.Interval == _timeFrame.GetStringValue() && x.CloseTime >= _lastCloseTime)/*.OrderBy(x => x.CloseTime)*/.Take(_amount);
 
@@ -105,7 +105,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
         {
             try
             {
-                using CryptoTradingBotContext contextDB = new CryptoTradingBotContext(connectionString);
+                using CryptoTradingSystemContext contextDB = new CryptoTradingSystemContext(connectionString);
                 using var transaction = contextDB.Database.BeginTransaction();
 
                 foreach (var data in _data)
