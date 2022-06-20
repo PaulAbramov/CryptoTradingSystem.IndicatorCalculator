@@ -14,7 +14,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
             var connectionString = config.GetValue<string>("ConnectionString");
 
-            Dictionary<Calculator, Task> calcs = new Dictionary<Calculator, Task>();
+            Dictionary <Calculator, Task> calcs = new Dictionary<Calculator, Task>();
 
             foreach (var asset in (Enums.Assets[]) Enum.GetValues(typeof(Enums.Assets)))
             {
@@ -37,6 +37,8 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     {
                         calc.Value.Dispose();
                         calcs[calc.Key] = Task.Run(calc.Key.CalculateIndicatorsAndWriteToDatabase);
+                        // we have to break here, because we are manipulating the dictionary here and an error gets thrown
+                        break;
                     }
                 }
 

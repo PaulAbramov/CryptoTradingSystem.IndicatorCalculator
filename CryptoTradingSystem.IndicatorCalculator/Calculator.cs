@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,13 +9,13 @@ namespace CryptoTradingSystem.IndicatorCalculator
 {
     public class Calculator
     {
-        private static readonly Dictionary<Enums.Assets, Dictionary<Enums.TimeFrames, SortedSet<CustomQuote>>> Quotes = new Dictionary<Enums.Assets, Dictionary<Enums.TimeFrames, SortedSet<CustomQuote>>>();
-        private static readonly ConcurrentDictionary<Enums.Assets, ConcurrentDictionary<Enums.TimeFrames, DateTime>> LastAssetCloseTimes = new ConcurrentDictionary<Enums.Assets, ConcurrentDictionary<Enums.TimeFrames, DateTime>>();
-
         private readonly MySQLDatabaseHandler databaseHandler;
 
         private readonly Enums.Assets asset;
         private readonly Enums.TimeFrames timeFrame;
+
+        private readonly SortedSet<CustomQuote> quotes;
+        private DateTime lastAssetCloseTime;
 
         private readonly List<int> ematimePeriods = new List<int> { 5, 9, 12, 20, 26, 50, 75, 200 };
         private readonly List<int> atrtimePeriods = new List<int> { 14 };
@@ -25,32 +24,8 @@ namespace CryptoTradingSystem.IndicatorCalculator
         {
             asset = _asset;
             timeFrame = _timeFrame;
-
-            if (!Quotes.ContainsKey(asset))
-            {
-                Quotes.Add(asset, new Dictionary<Enums.TimeFrames, SortedSet<CustomQuote>>());
-                Quotes[asset].Add(timeFrame, new SortedSet<CustomQuote>(Comparer<CustomQuote>.Create((a, b) => a.Date.CompareTo(b.Date))));
-            }
-            else if (!Quotes[asset].ContainsKey(timeFrame))
-            {
-                Quotes[asset].Add(timeFrame, new SortedSet<CustomQuote>(Comparer<CustomQuote>.Create((a, b) => a.Date.CompareTo(b.Date))));
-            }
-
-            if (!LastAssetCloseTimes.ContainsKey(asset))
-            {
-                LastAssetCloseTimes.TryAdd(asset, new ConcurrentDictionary<Enums.TimeFrames, DateTime>());
-                if (!LastAssetCloseTimes[asset].TryAdd(timeFrame, DateTime.MinValue))
-                {
-                    Console.WriteLine($"could not add {asset} {timeFrame}");
-                }
-            }
-            else if (!LastAssetCloseTimes[asset].ContainsKey(timeFrame))
-            {
-                if (!LastAssetCloseTimes[asset].TryAdd(timeFrame, DateTime.MinValue))
-                {
-                    Console.WriteLine($"could not add {asset} {timeFrame}");
-                }
-            }
+            lastAssetCloseTime = DateTime.MinValue;
+            quotes = new SortedSet<CustomQuote>(Comparer<CustomQuote>.Create((a, b) => a.Date.CompareTo(b.Date)));
 
             databaseHandler = new MySQLDatabaseHandler(_connectionString);
         }
@@ -68,15 +43,15 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     int amountOfData = 750;
 
                     // get the candlestick from last saved AssetId for this asset and timeframe
-                    var quotesToCheck = databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, LastAssetCloseTimes[asset][timeFrame], amountOfData);
+                    var quotesToCheck = databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData);
                     if (quotesToCheck.Count == 0)
                     {
                         return;
                     }
 
                     //Remove same entries and concat both lists
-                    Quotes[asset][timeFrame].ExceptWith(quotesToCheck);
-                    Quotes[asset][timeFrame].UnionWith(quotesToCheck);
+                    quotes.ExceptWith(quotesToCheck);
+                    quotes.UnionWith(quotesToCheck);
 
                     Dictionary<int, List<EmaResult>> EMAs = new Dictionary<int, List<EmaResult>>();
                     Dictionary<int, List<SmaResult>> SMAs = new Dictionary<int, List<SmaResult>>();
@@ -90,13 +65,13 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     foreach (var ematimePeriod in ematimePeriods)
                     {
-                        EMAs.Add(ematimePeriod, Quotes[asset][timeFrame].GetEma(ematimePeriod).ToList());
-                        SMAs.Add(ematimePeriod, Quotes[asset][timeFrame].GetSma(ematimePeriod).ToList());
+                        EMAs.Add(ematimePeriod, quotes.GetEma(ematimePeriod).ToList());
+                        SMAs.Add(ematimePeriod, quotes.GetSma(ematimePeriod).ToList());
                     }
 
                     foreach (var atrtimePeriod in atrtimePeriods)
                     {
-                        ATRs.Add(atrtimePeriod, Quotes[asset][timeFrame].GetAtr(atrtimePeriod).ToList());
+                        ATRs.Add(atrtimePeriod, quotes.GetAtr(atrtimePeriod).ToList());
                     }
 
                     #endregion
@@ -104,15 +79,15 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     // if we get the amount of entries we wanted, then delete other up to this and set new lastAssetId
                     if (quotesToCheck.Count == amountOfData)
                     {
-                        Quotes[asset][timeFrame].RemoveWhere(x => x.Date < LastAssetCloseTimes[asset][timeFrame]);
-                        LastAssetCloseTimes[asset][timeFrame] = quotesToCheck.Last()!.Date;
+                        quotes.RemoveWhere(x => x.Date < lastAssetCloseTime);
+                        lastAssetCloseTime = quotesToCheck.Last()!.Date;
                     }
 
                     quotesToCheck.Clear();
 
                     #region pass indicators to List matched to AssetId
 
-                    foreach (var quoteEntry in Quotes[asset][timeFrame])
+                    foreach (var quoteEntry in quotes)
                     {
                         EMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
                         SMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
@@ -140,7 +115,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     #endregion
 
-                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {Quotes[asset][timeFrame].Last().Date} | wrote to the DB.");
+                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
 
                     Task.Delay(2000).GetAwaiter().GetResult();
                 }
