@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CryptoTradingSystem.General.Data;
+using CryptoTradingSystem.General.Helper;
 using Skender.Stock.Indicators;
 
 namespace CryptoTradingSystem.IndicatorCalculator
@@ -43,7 +44,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     int amountOfData = 750;
 
                     // get the candlestick from last saved AssetId for this asset and timeframe
-                    var quotesToCheck = databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData);
+                    var quotesToCheck = Retry.Do(() =>databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
                     if (quotesToCheck.Count == 0)
                     {
                         return;
@@ -83,8 +84,6 @@ namespace CryptoTradingSystem.IndicatorCalculator
                         lastAssetCloseTime = quotesToCheck.Last()!.Date;
                     }
 
-                    quotesToCheck.Clear();
-
                     #region pass indicators to List matched to AssetId
 
                     foreach (var quoteEntry in quotes)
@@ -115,7 +114,12 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     #endregion
 
-                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
+                    if (quotesToCheck.Count == amountOfData)
+                    {
+                        Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
+                    }
+
+                    quotesToCheck.Clear();
 
                     Task.Delay(2000).GetAwaiter().GetResult();
                 }
