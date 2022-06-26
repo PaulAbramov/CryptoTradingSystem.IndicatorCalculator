@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CryptoTradingSystem.General.Data;
+using CryptoTradingSystem.General.Helper;
 using Skender.Stock.Indicators;
 
 namespace CryptoTradingSystem.IndicatorCalculator
@@ -43,7 +44,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     int amountOfData = 750;
 
                     // get the candlestick from last saved AssetId for this asset and timeframe
-                    var quotesToCheck = databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData);
+                    var quotesToCheck = Retry.Do(() =>databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
                     if (quotesToCheck.Count == 0)
                     {
                         return;
