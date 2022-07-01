@@ -43,7 +43,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             else
             {
-                Console.WriteLine($"GetCandleStickDataFromDatabase | {_timeFrame} konnte nicht übersetzt werden");
+                Console.WriteLine($"GetCandleStickDataFromDatabase | {_timeFrame} could not be translated");
                 return quotes;
             }
 
@@ -51,9 +51,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
             {
                 using CryptoTradingSystemContext contextDB = new CryptoTradingSystemContext(connectionString);
 
-                var candlesToCalculate = contextDB.Assets.Where(x => x.AssetName == _asset.GetStringValue() && x.Interval == _timeFrame.GetStringValue() && x.CloseTime >= _lastCloseTime)/*.OrderBy(x => x.CloseTime)*/.Take(_amount);
+                var candlesToCalculate = contextDB.Assets.Where(x => x.AssetName == _asset.GetStringValue() && x.Interval == _timeFrame.GetStringValue() && x.CloseTime >= _lastCloseTime).OrderBy(x => x.OpenTime).Take(_amount);
 
-                DateTime previousCandle = DateTime.MinValue;
+                DateTime previousCandle = _lastCloseTime;
                 foreach (var candle in candlesToCalculate)
                 {
                     // If we do have a previous candle, check if the difference from the current to the previous one is above the timeframe we are looking for

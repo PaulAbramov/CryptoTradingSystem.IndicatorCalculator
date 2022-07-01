@@ -43,8 +43,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
                 {
                     int amountOfData = 750;
 
+                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | getting data from {lastAssetCloseTime}");
+
                     // get the candlestick from last saved AssetId for this asset and timeframe
-                    var quotesToCheck = Retry.Do(() =>databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
+                    var quotesToCheck = Retry.Do(() => databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
+                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | got {quotesToCheck.Count} back with {quotesToCheck.LastOrDefault()?.Date}");
                     if (quotesToCheck.Count == 0)
                     {
                         return;
