@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CryptoTradingSystem.General.Data;
 using CryptoTradingSystem.General.Helper;
+using Serilog;
 using Skender.Stock.Indicators;
 
 namespace CryptoTradingSystem.IndicatorCalculator
@@ -21,6 +22,10 @@ namespace CryptoTradingSystem.IndicatorCalculator
         private readonly List<int> ematimePeriods = new List<int> { 5, 9, 12, 20, 26, 50, 75, 200 };
         private readonly List<int> atrtimePeriods = new List<int> { 14 };
 
+        public string Asset => asset.GetStringValue();
+
+        public string TimeFrame => timeFrame.GetStringValue();
+
         public Calculator(Enums.Assets _asset, Enums.TimeFrames _timeFrame, string _connectionString)
         {
             asset = _asset;
@@ -35,19 +40,19 @@ namespace CryptoTradingSystem.IndicatorCalculator
         /// Get the data from the database and calculate the indicators
         /// afterwards write them into the indicatorTables in the database
         /// </summary>
-        public Task CalculateIndicatorsAndWriteToDatabase()
+        public Task CalculateIndicatorsAndWriteToDatabase(int amountOfData)
         {
             var taskToWork = Task.Factory.StartNew(() =>
             {
                 while (true)
                 {
-                    int amountOfData = 750;
-
-                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | getting data from {lastAssetCloseTime}");
+                    Log.Debug("{asset} | {timeFrame} | getting data from {lastClose}", asset.GetStringValue(), timeFrame.GetStringValue(), lastAssetCloseTime);
 
                     // get the candlestick from last saved AssetId for this asset and timeframe
                     var quotesToCheck = Retry.Do(() => databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
-                    Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | got {quotesToCheck.Count} back with {quotesToCheck.LastOrDefault()?.Date}");
+                    
+                    Log.Debug("{asset} | {timeFrame} | got {amount} back with last date: '{lastDate}'", asset.GetStringValue(), timeFrame.GetStringValue(), quotesToCheck.Count, quotesToCheck.LastOrDefault()?.Date);
+
                     if (quotesToCheck.Count == 0)
                     {
                         return;
@@ -111,16 +116,13 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     #region write all the entries into the DB
 
-                    databaseHandler.UpsertIndicators(Enums.Indicators.EMA, EMAsToSave);
-                    databaseHandler.UpsertIndicators(Enums.Indicators.SMA, SMAsToSave);
-                    databaseHandler.UpsertIndicators(Enums.Indicators.ATR, ATRsToSave);
+                    Retry.Do(() => databaseHandler.UpsertIndicators(Enums.Indicators.EMA, EMAsToSave), TimeSpan.FromSeconds(1));
+                    Retry.Do(() => databaseHandler.UpsertIndicators(Enums.Indicators.SMA, SMAsToSave), TimeSpan.FromSeconds(1));
+                    Retry.Do(() => databaseHandler.UpsertIndicators(Enums.Indicators.ATR, ATRsToSave), TimeSpan.FromSeconds(1));
 
                     #endregion
 
-                    if (quotesToCheck.Count == amountOfData)
-                    {
-                        Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
-                    }
+                    Log.Debug("{asset} | {timeFrame} | {LastDate} | wrote to the DB.", asset.GetStringValue(), timeFrame.GetStringValue(), quotes.Last().Date);
 
                     quotesToCheck.Clear();
 

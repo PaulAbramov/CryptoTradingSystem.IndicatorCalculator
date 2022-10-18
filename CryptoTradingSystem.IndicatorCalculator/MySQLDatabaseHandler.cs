@@ -7,6 +7,7 @@ using CryptoTradingSystem.General.Database;
 using CryptoTradingSystem.General.Database.Models;
 using CryptoTradingSystem.IndicatorCalculator.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace CryptoTradingSystem.IndicatorCalculator
 {
@@ -43,7 +44,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             else
             {
-                Console.WriteLine($"GetCandleStickDataFromDatabase | {_timeFrame} could not be translated");
+                Log.Warning("{asset} | {timeFrame} | timeframe could not be translated.", _asset.GetStringValue(), _timeFrame.GetStringValue());
                 return quotes;
             }
 
@@ -64,6 +65,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
                         bool gap = (candle.CloseTime - previousCandle) > timeFrame;
                         if (gap && candle.CloseTime.Year == currentYear && candle.CloseTime.Month == currentMonth && (previousCandle.Year != currentYear || previousCandle.Month != currentMonth))
                         {
+                            Log.Debug("{asset} | {timeFrame} | there is a gap: '{currenctClose}' - '{previousCandle}' = '{result}'", _asset.GetStringValue(), _timeFrame.GetStringValue(), candle.CloseTime, previousCandle, candle.CloseTime - previousCandle);
                             break;
                         }
                     }
@@ -72,6 +74,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
                         // Do not allow to calculate indicators if we do not have data from the past
                         if (candle.CloseTime.Year == currentYear && (candle.CloseTime.Month == currentMonth || candle.CloseTime.Month == currentMonth - 1))
                         {
+                            Log.Debug("{asset} | {timeFrame} | did start to calculate this year: '{currenctClose}' / '{previousCandle}'", _asset.GetStringValue(), _timeFrame.GetStringValue(), candle.CloseTime, previousCandle);
                             break;
                         }
                     }
@@ -94,7 +97,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Log.Error("{asset} | {timeFrame} | {lastClose} | could not get candles from Database", _asset.GetStringValue(), _timeFrame.GetStringValue(), _lastCloseTime);
                 throw;
             }
 
@@ -131,7 +134,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Log.Error("{asset} | {timeFrame} | {indicator} | could not upsert Candles", _data.FirstOrDefault().Key.Asset, _data.FirstOrDefault().Key.Interval, _indicator.GetStringValue());
                 throw;
             }
         }
@@ -188,7 +191,6 @@ namespace CryptoTradingSystem.IndicatorCalculator
                         break;
                     }
                 }
-
             }
         }
     }
