@@ -51,7 +51,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     // get the candlestick from last saved AssetId for this asset and timeframe
                     var quotesToCheck = Retry.Do(() => databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
                     
-                    Log.Debug("{asset} | {timeFrame} | got {amount} back with last date: '{lastDate}'", asset.GetStringValue(), timeFrame.GetStringValue(), quotesToCheck.Count, quotesToCheck.LastOrDefault()?.Date);
+                    Log.Debug("{asset} | {timeFrame} | got {amount} back with last date: '{lastDate}'", 
+                        asset.GetStringValue(), 
+                        timeFrame.GetStringValue(), 
+                        quotesToCheck.Count, 
+                        quotesToCheck.LastOrDefault()?.Date);
 
                     if (quotesToCheck.Count == 0)
                     {
@@ -66,9 +70,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     Dictionary<int, List<SmaResult>> SMAs = new Dictionary<int, List<SmaResult>>();
                     Dictionary<int, List<AtrResult>> ATRs = new Dictionary<int, List<AtrResult>>();
 
-                    Dictionary<CustomQuote, Dictionary<int, double?>> EMAsToSave = new Dictionary<CustomQuote, Dictionary<int, double?>>();
-                    Dictionary<CustomQuote, Dictionary<int, double?>> SMAsToSave = new Dictionary<CustomQuote, Dictionary<int, double?>>();
-                    Dictionary<CustomQuote, Dictionary<int, double?>> ATRsToSave = new Dictionary<CustomQuote, Dictionary<int, double?>>();
+                    Dictionary<CustomQuote, Dictionary<int, decimal?>> EMAsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
+                    Dictionary<CustomQuote, Dictionary<int, decimal?>> SMAsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
+                    Dictionary<CustomQuote, Dictionary<int, decimal?>> ATRsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
 
                     #region Calculate Indicators
 
@@ -96,19 +100,19 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     foreach (var quoteEntry in quotes)
                     {
-                        EMAsToSave.Add(quoteEntry, new Dictionary<int, double?>());
-                        SMAsToSave.Add(quoteEntry, new Dictionary<int, double?>());
-                        ATRsToSave.Add(quoteEntry, new Dictionary<int, double?>());
+                        EMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
+                        SMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
+                        ATRsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
 
                         foreach (var ematimePeriod in ematimePeriods)
                         {
-                            EMAsToSave[quoteEntry].Add(ematimePeriod, EMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Ema);
-                            SMAsToSave[quoteEntry].Add(ematimePeriod, SMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Sma);
+                            EMAsToSave[quoteEntry].Add(ematimePeriod, (decimal?)EMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Ema);
+                            SMAsToSave[quoteEntry].Add(ematimePeriod, (decimal?)SMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Sma);
                         }
 
                         foreach (var atrtimePeriod in atrtimePeriods)
                         {
-                            ATRsToSave[quoteEntry].Add(atrtimePeriod, ATRs[atrtimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Atr);
+                            ATRsToSave[quoteEntry].Add(atrtimePeriod, (decimal?)ATRs[atrtimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Atr);
                         }
                     }
 

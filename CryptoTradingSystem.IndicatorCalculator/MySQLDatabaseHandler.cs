@@ -97,14 +97,18 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             catch (Exception e)
             {
-                Log.Error("{asset} | {timeFrame} | {lastClose} | could not get candles from Database", _asset.GetStringValue(), _timeFrame.GetStringValue(), _lastCloseTime);
+                Log.Error(
+                    "{asset} | {timeFrame} | {lastClose} | could not get candles from Database", 
+                    _asset.GetStringValue(), 
+                    _timeFrame.GetStringValue(), 
+                    _lastCloseTime);
                 throw;
             }
 
             return quotes;
         }
 
-        public void UpsertIndicators(Enums.Indicators _indicator, Dictionary<CustomQuote, Dictionary<int, double?>> _data)
+        public void UpsertIndicators(Enums.Indicators _indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> _data)
         {
             try
             {
@@ -134,14 +138,22 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             catch (Exception e)
             {
-                Log.Error("{asset} | {timeFrame} | {indicator} | could not upsert Candles", _data.FirstOrDefault().Key.Asset, _data.FirstOrDefault().Key.Interval, _indicator.GetStringValue());
+                Log.Error(
+                    "{asset} | {timeFrame} | {indicator} | could not upsert Candles", 
+                    _data.FirstOrDefault().Key.Asset, 
+                    _data.FirstOrDefault().Key.Interval, 
+                    _indicator.GetStringValue());
                 throw;
             }
         }
 
-        private void UpdateOrInsertIndicator<T>(DbSet<T> _databaseSet, KeyValuePair<CustomQuote, Dictionary<int, double?>> _data) where T : Indicator
+        private void UpdateOrInsertIndicator<T>(DbSet<T> _databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> _data) where T : Indicator
         {
-            var emaValueToCandle = _databaseSet.FirstOrDefault(x => x.AssetName == _data.Key.Asset && x.Interval == _data.Key.Interval && x.OpenTime == _data.Key.OpenTime && x.CloseTime == _data.Key.Date);
+            var emaValueToCandle = _databaseSet
+                .FirstOrDefault(x => x.AssetName == _data.Key.Asset 
+                && x.Interval == _data.Key.Interval 
+                && x.OpenTime == _data.Key.OpenTime 
+                && x.CloseTime == _data.Key.Date);
 
             if (emaValueToCandle != null)
             {
@@ -170,7 +182,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
         /// <param name="_class"></param>
         /// <param name="_object"></param>
         /// <param name="_data"></param>
-        private void SetProperties(Type _class, Indicator _object, Dictionary<int, double?> _data)
+        private void SetProperties(Type _class, Indicator _object, Dictionary<int, decimal?> _data)
         {
             PropertyInfo[] properties = _class.GetProperties();
 
