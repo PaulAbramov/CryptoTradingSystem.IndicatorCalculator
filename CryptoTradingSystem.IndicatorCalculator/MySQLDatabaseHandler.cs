@@ -104,7 +104,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             return quotes;
         }
 
-        public void UpsertIndicators(Enums.Indicators _indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> _data)
+        public void UpsertIndicators(Enums.Indicators _indicator, Dictionary<CustomQuote, Dictionary<int, double?>> _data)
         {
             try
             {
@@ -139,7 +139,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
         }
 
-        private void UpdateOrInsertIndicator<T>(DbSet<T> _databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> _data) where T : Indicator
+        private void UpdateOrInsertIndicator<T>(DbSet<T> _databaseSet, KeyValuePair<CustomQuote, Dictionary<int, double?>> _data) where T : Indicator
         {
             var emaValueToCandle = _databaseSet.FirstOrDefault(x => x.AssetName == _data.Key.Asset && x.Interval == _data.Key.Interval && x.OpenTime == _data.Key.OpenTime && x.CloseTime == _data.Key.Date);
 
@@ -170,7 +170,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
         /// <param name="_class"></param>
         /// <param name="_object"></param>
         /// <param name="_data"></param>
-        private void SetProperties(Type _class, Indicator _object, Dictionary<int, decimal?> _data)
+        private void SetProperties(Type _class, Indicator _object, Dictionary<int, double?> _data)
         {
             PropertyInfo[] properties = _class.GetProperties();
 

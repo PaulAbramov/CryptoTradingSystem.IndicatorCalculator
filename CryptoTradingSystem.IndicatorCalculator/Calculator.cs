@@ -66,9 +66,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     Dictionary<int, List<SmaResult>> SMAs = new Dictionary<int, List<SmaResult>>();
                     Dictionary<int, List<AtrResult>> ATRs = new Dictionary<int, List<AtrResult>>();
 
-                    Dictionary<CustomQuote, Dictionary<int, decimal?>> EMAsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
-                    Dictionary<CustomQuote, Dictionary<int, decimal?>> SMAsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
-                    Dictionary<CustomQuote, Dictionary<int, decimal?>> ATRsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
+                    Dictionary<CustomQuote, Dictionary<int, double?>> EMAsToSave = new Dictionary<CustomQuote, Dictionary<int, double?>>();
+                    Dictionary<CustomQuote, Dictionary<int, double?>> SMAsToSave = new Dictionary<CustomQuote, Dictionary<int, double?>>();
+                    Dictionary<CustomQuote, Dictionary<int, double?>> ATRsToSave = new Dictionary<CustomQuote, Dictionary<int, double?>>();
 
                     #region Calculate Indicators
 
@@ -96,9 +96,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     foreach (var quoteEntry in quotes)
                     {
-                        EMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
-                        SMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
-                        ATRsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
+                        EMAsToSave.Add(quoteEntry, new Dictionary<int, double?>());
+                        SMAsToSave.Add(quoteEntry, new Dictionary<int, double?>());
+                        ATRsToSave.Add(quoteEntry, new Dictionary<int, double?>());
 
                         foreach (var ematimePeriod in ematimePeriods)
                         {
