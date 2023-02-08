@@ -4,15 +4,15 @@ using CryptoTradingSystem.General.Data;
 
 namespace CryptoTradingSystem.IndicatorCalculator.Interfaces
 {
-    interface IDatabaseHandlerIndicator
+    public interface IDatabaseHandlerIndicator
     {
-        List<CustomQuote> GetCandleStickDataFromDatabase(Enums.Assets _asset, Enums.TimeFrames _timeFrame, DateTime _lastCloseTime = new DateTime(), int _amount = 1000);
+        List<CustomQuote> GetCandleStickDataFromDatabase(Enums.Assets asset, Enums.TimeFrames timeFrame, DateTime lastCloseTime = new DateTime(), int amount = 1000);
         
         /// <summary>
         /// Update or Insert the indicators into the DB
         /// </summary>
-        /// <param name="_indicator"></param>
-        /// <param name="_data"></param>
-        void UpsertIndicators(Enums.Indicators _indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> _data);
+        /// <param name="indicator"></param>
+        /// <param name="data"></param>
+        void UpsertIndicators(Enums.Indicators indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> data);
     }
 }
