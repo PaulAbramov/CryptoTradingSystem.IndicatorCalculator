@@ -34,14 +34,14 @@ namespace CryptoTradingSystem.IndicatorCalculator
                 // Translate timeframe here to do date checks later on
                 case Enums.TimeFrames.M5:
                 case Enums.TimeFrames.M15:
-                    parsedTimeFrame = TimeSpan.FromMinutes(Convert.ToDouble(timeFrame.GetStringValue().Trim('m')));
+                    parsedTimeFrame = TimeSpan.FromMinutes(Convert.ToDouble(timeFrame.GetStringValue()?.Trim('m')));
                     break;
                 case Enums.TimeFrames.H1:
                 case Enums.TimeFrames.H4:
-                    parsedTimeFrame = TimeSpan.FromHours(Convert.ToDouble(timeFrame.GetStringValue().Trim('h')));
+                    parsedTimeFrame = TimeSpan.FromHours(Convert.ToDouble(timeFrame.GetStringValue()?.Trim('h')));
                     break;
                 case Enums.TimeFrames.D1:
-                    parsedTimeFrame = TimeSpan.FromDays(Convert.ToDouble(timeFrame.GetStringValue().Trim('d')));
+                    parsedTimeFrame = TimeSpan.FromDays(Convert.ToDouble(timeFrame.GetStringValue()?.Trim('d')));
                     break;
                 default:
                     Console.WriteLine($"GetCandleStickDataFromDatabase | {timeFrame} konnte nicht übersetzt werden");
@@ -52,52 +52,55 @@ namespace CryptoTradingSystem.IndicatorCalculator
             {
                 using var contextDB = new CryptoTradingSystemContext(_connectionString);
 
-                var candlesToCalculate = contextDB.Assets.Where(x => 
-                    x.AssetName == asset.GetStringValue() && 
-                    x.Interval == timeFrame.GetStringValue() && 
-                    x.CloseTime >= lastCloseTime)
-                    .OrderBy(x => x.OpenTime)
-                    .Take(amount);
-
-                DateTime previousCandle = lastCloseTime;
-                foreach (var candle in candlesToCalculate)
+                if (contextDB.Assets != null)
                 {
-                    // If we do have a previous candle, check if the difference from the current to the previous one is above the timeframe we are looking for
-                    // If so, then it is a gap and then check if the gap is towards the current Year and Month, this is where we can be sure, that the data is not complete yet.
-                    // Break here then, so we can do a new request and get the new incoming data
-                    if (previousCandle != DateTime.MinValue)
-                    {
-                        var gap = (candle.CloseTime - previousCandle) > parsedTimeFrame;
-                        if (gap && candle.CloseTime.Year == currentYear && candle.CloseTime.Month == currentMonth && (previousCandle.Year != currentYear || previousCandle.Month != currentMonth))
-                        {
-                            Log.Debug("{asset} | {timeFrame} | there is a gap: '{currenctClose}' - '{previousCandle}' = '{result}'", asset.GetStringValue(), timeFrame.GetStringValue(), candle.CloseTime, previousCandle, candle.CloseTime - previousCandle);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        // Do not allow to calculate indicators if we do not have data from the past
-                        if (candle.CloseTime.Year == currentYear && (candle.CloseTime.Month == currentMonth || candle.CloseTime.Month == currentMonth - 1))
-                        {
-                            Log.Debug("{asset} | {timeFrame} | did start to calculate this year: '{currenctClose}' / '{previousCandle}'", asset.GetStringValue(), timeFrame.GetStringValue(), candle.CloseTime, previousCandle);
-                            break;
-                        }
-                    }
+                    var candlesToCalculate = contextDB.Assets.Where(x => 
+                            x.AssetName == asset.GetStringValue() && 
+                            x.Interval == timeFrame.GetStringValue() && 
+                            x.CloseTime >= lastCloseTime)
+                        .OrderBy(x => x.OpenTime)
+                        .Take(amount);
 
-                    quotes.Add(new CustomQuote
+                    var previousCandle = lastCloseTime;
+                    foreach (var candle in candlesToCalculate)
                     {
-                        Asset = candle.AssetName,
-                        Interval = candle.Interval,
-                        OpenTime = candle.OpenTime,
-                        Date = candle.CloseTime,
-                        Open = candle.CandleOpen,
-                        High = candle.CandleHigh,
-                        Low = candle.CandleLow,
-                        Close = candle.CandleClose,
-                        Volume = candle.Volume
-                    });
+                        // If we do have a previous candle, check if the difference from the current to the previous one is above the timeframe we are looking for
+                        // If so, then it is a gap and then check if the gap is towards the current Year and Month, this is where we can be sure, that the data is not complete yet.
+                        // Break here then, so we can do a new request and get the new incoming data
+                        if (previousCandle != DateTime.MinValue)
+                        {
+                            var gap = (candle.CloseTime - previousCandle) > parsedTimeFrame;
+                            if (gap && candle.CloseTime.Year == currentYear && candle.CloseTime.Month == currentMonth && (previousCandle.Year != currentYear || previousCandle.Month != currentMonth))
+                            {
+                                Log.Debug("{asset} | {timeFrame} | there is a gap: '{currenctClose}' - '{previousCandle}' = '{result}'", asset.GetStringValue(), timeFrame.GetStringValue(), candle.CloseTime, previousCandle, candle.CloseTime - previousCandle);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            // Do not allow to calculate indicators if we do not have data from the past
+                            if (candle.CloseTime.Year == currentYear && (candle.CloseTime.Month == currentMonth || candle.CloseTime.Month == currentMonth - 1))
+                            {
+                                Log.Debug("{asset} | {timeFrame} | did start to calculate this year: '{currenctClose}' / '{previousCandle}'", asset.GetStringValue(), timeFrame.GetStringValue(), candle.CloseTime, previousCandle);
+                                break;
+                            }
+                        }
 
-                    previousCandle = candle.CloseTime;
+                        quotes.Add(new CustomQuote
+                        {
+                            Asset = candle.AssetName,
+                            Interval = candle.Interval,
+                            OpenTime = candle.OpenTime,
+                            Date = candle.CloseTime,
+                            Open = candle.CandleOpen,
+                            High = candle.CandleHigh,
+                            Low = candle.CandleLow,
+                            Close = candle.CandleClose,
+                            Volume = candle.Volume
+                        });
+
+                        previousCandle = candle.CloseTime;
+                    }
                 }
             }
             catch (Exception e)
@@ -152,13 +155,16 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
         }
 
-        private void UpdateOrInsertIndicator<T>(DbSet<T> databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> data) where T : Indicator
+        private void UpdateOrInsertIndicator<T>(DbSet<T>? databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> data) where T : Indicator
         {
+            if (databaseSet == null) 
+                return;
+            
             var emaValueToCandle = databaseSet
                 .FirstOrDefault(x => x.AssetName == data.Key.Asset 
-                && x.Interval == data.Key.Interval 
-                && x.OpenTime == data.Key.OpenTime 
-                && x.CloseTime == data.Key.Date);
+                                     && x.Interval == data.Key.Interval 
+                                     && x.OpenTime == data.Key.OpenTime 
+                                     && x.CloseTime == data.Key.Date);
 
             if (emaValueToCandle != null)
             {

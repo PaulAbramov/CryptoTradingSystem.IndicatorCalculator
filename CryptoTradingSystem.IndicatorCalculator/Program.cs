@@ -30,12 +30,12 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
             var calcs = new Dictionary<Calculator, Task>();
 
-            int amountOfData = config.GetValue<int>("AmountOfData");
+            var amountOfData = config.GetValue<int>("AmountOfData");
             foreach (var asset in (Enums.Assets[]) Enum.GetValues(typeof(Enums.Assets)))
             {
                 foreach (var timeFrame in (Enums.TimeFrames[])Enum.GetValues(typeof(Enums.TimeFrames)))
                 {
-                    Calculator calc = new Calculator(asset, timeFrame, connectionString);
+                    var calc = new Calculator(asset, timeFrame, connectionString);
                     Log.Information("{asset} | {timeFrame} | start to calculate indicators.", asset.GetStringValue(), timeFrame.GetStringValue());
                     calcs.Add(calc, Task.Run(() => calc.CalculateIndicatorsAndWriteToDatabase(amountOfData)));
                 }

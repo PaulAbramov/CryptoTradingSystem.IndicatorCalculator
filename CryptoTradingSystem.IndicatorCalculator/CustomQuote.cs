@@ -14,8 +14,8 @@ namespace CryptoTradingSystem.IndicatorCalculator
         public decimal Volume { get; set; }
 
         // custom properties
-        public string Asset { get; set; }
-        public string Interval { get; set; }
+        public string? Asset { get; set; }
+        public string? Interval { get; set; }
         public DateTime OpenTime { get; set; }
     }
 }
