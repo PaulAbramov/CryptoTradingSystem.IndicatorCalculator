@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -17,15 +17,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="CryptoTradingSystem.General">
-      <HintPath>..\..\Releasebuilds\CryptoTradingSystem.General\netcoreapp3.1\CryptoTradingSystem.General.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="CryptoTradingSystem.General">
+      <HintPath>..\..\Releasebuilds\CryptoTradingSystem.General\net7.0\CryptoTradingSystem.General.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

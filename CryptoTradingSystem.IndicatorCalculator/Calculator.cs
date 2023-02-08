@@ -10,25 +10,25 @@ namespace CryptoTradingSystem.IndicatorCalculator
 {
     public class Calculator
     {
-        private readonly MySQLDatabaseHandler databaseHandler;
+        private readonly MySQLDatabaseHandler _databaseHandler;
 
-        private readonly Enums.Assets asset;
-        private readonly Enums.TimeFrames timeFrame;
+        private readonly Enums.Assets _asset;
+        private readonly Enums.TimeFrames _timeFrame;
 
-        private readonly SortedSet<CustomQuote> quotes;
-        private DateTime lastAssetCloseTime;
+        private readonly SortedSet<CustomQuote> _quotes;
+        private DateTime _lastAssetCloseTime;
 
-        private readonly List<int> ematimePeriods = new List<int> { 5, 9, 12, 20, 26, 50, 75, 200 };
-        private readonly List<int> atrtimePeriods = new List<int> { 14 };
+        private readonly List<int> _ematimePeriods = new List<int> { 5, 9, 12, 20, 26, 50, 75, 200 };
+        private readonly List<int> _atrtimePeriods = new List<int> { 14 };
 
-        public Calculator(Enums.Assets _asset, Enums.TimeFrames _timeFrame, string _connectionString)
+        public Calculator(Enums.Assets asset, Enums.TimeFrames timeFrame, string connectionString)
         {
-            asset = _asset;
-            timeFrame = _timeFrame;
-            lastAssetCloseTime = DateTime.MinValue;
-            quotes = new SortedSet<CustomQuote>(Comparer<CustomQuote>.Create((a, b) => a.Date.CompareTo(b.Date)));
+            _asset = asset;
+            _timeFrame = timeFrame;
+            _lastAssetCloseTime = DateTime.MinValue;
+            _quotes = new SortedSet<CustomQuote>(Comparer<CustomQuote>.Create((a, b) => a.Date.CompareTo(b.Date)));
 
-            databaseHandler = new MySQLDatabaseHandler(_connectionString);
+            _databaseHandler = new MySQLDatabaseHandler(connectionString);
         }
 
         /// <summary>
@@ -41,22 +41,21 @@ namespace CryptoTradingSystem.IndicatorCalculator
             {
                 while (true)
                 {
-                    int amountOfData = 750;
+                    const int amountOfData = 750;
 
                     // get the candlestick from last saved AssetId for this asset and timeframe
-                    var quotesToCheck = Retry.Do(() =>databaseHandler.GetCandleStickDataFromDatabase(asset, timeFrame, lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
+                    var quotesToCheck = Retry.Do(() =>_databaseHandler.GetCandleStickDataFromDatabase(_asset, _timeFrame, _lastAssetCloseTime, amountOfData), TimeSpan.FromSeconds(1));
                     if (quotesToCheck.Count == 0)
                     {
                         return;
                     }
 
                     //Remove same entries and concat both lists
-                    quotes.ExceptWith(quotesToCheck);
-                    quotes.UnionWith(quotesToCheck);
+                    _quotes.ExceptWith(quotesToCheck);
+                    _quotes.UnionWith(quotesToCheck);
 
                     Dictionary<int, List<EmaResult>> EMAs = new Dictionary<int, List<EmaResult>>();
                     Dictionary<int, List<SmaResult>> SMAs = new Dictionary<int, List<SmaResult>>();
-                    Dictionary<int, List<AtrResult>> ATRs = new Dictionary<int, List<AtrResult>>();
 
                     Dictionary<CustomQuote, Dictionary<int, decimal?>> EMAsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
                     Dictionary<CustomQuote, Dictionary<int, decimal?>> SMAsToSave = new Dictionary<CustomQuote, Dictionary<int, decimal?>>();
@@ -64,43 +63,40 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     #region Calculate Indicators
 
-                    foreach (var ematimePeriod in ematimePeriods)
+                    foreach (var ematimePeriod in _ematimePeriods)
                     {
-                        EMAs.Add(ematimePeriod, quotes.GetEma(ematimePeriod).ToList());
-                        SMAs.Add(ematimePeriod, quotes.GetSma(ematimePeriod).ToList());
+                        EMAs.Add(ematimePeriod, _quotes.GetEma(ematimePeriod).ToList());
+                        SMAs.Add(ematimePeriod, _quotes.GetSma(ematimePeriod).ToList());
                     }
 
-                    foreach (var atrtimePeriod in atrtimePeriods)
-                    {
-                        ATRs.Add(atrtimePeriod, quotes.GetAtr(atrtimePeriod).ToList());
-                    }
+                    var ATRs = _atrtimePeriods.ToDictionary(atrtimePeriod => atrtimePeriod, atrtimePeriod => _quotes.GetAtr(atrtimePeriod).ToList());
 
                     #endregion
 
                     // if we get the amount of entries we wanted, then delete other up to this and set new lastAssetId
                     if (quotesToCheck.Count == amountOfData)
                     {
-                        quotes.RemoveWhere(x => x.Date < lastAssetCloseTime);
-                        lastAssetCloseTime = quotesToCheck.Last()!.Date;
+                        _quotes.RemoveWhere(x => x.Date < _lastAssetCloseTime);
+                        _lastAssetCloseTime = quotesToCheck.Last()!.Date;
                     }
 
                     #region pass indicators to List matched to AssetId
 
-                    foreach (var quoteEntry in quotes)
+                    foreach (var quoteEntry in _quotes)
                     {
                         EMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
                         SMAsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
                         ATRsToSave.Add(quoteEntry, new Dictionary<int, decimal?>());
 
-                        foreach (var ematimePeriod in ematimePeriods)
+                        foreach (var ematimePeriod in _ematimePeriods)
                         {
-                            EMAsToSave[quoteEntry].Add(ematimePeriod, EMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Ema);
-                            SMAsToSave[quoteEntry].Add(ematimePeriod, SMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Sma);
+                            EMAsToSave[quoteEntry].Add(ematimePeriod, EMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date)?.Ema);
+                            SMAsToSave[quoteEntry].Add(ematimePeriod, SMAs[ematimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date)?.Sma);
                         }
 
-                        foreach (var atrtimePeriod in atrtimePeriods)
+                        foreach (var atrtimePeriod in _atrtimePeriods)
                         {
-                            ATRsToSave[quoteEntry].Add(atrtimePeriod, ATRs[atrtimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date).Atr);
+                            ATRsToSave[quoteEntry].Add(atrtimePeriod, ATRs[atrtimePeriod].FirstOrDefault(x => x.Date == quoteEntry.Date)?.Atr);
                         }
                     }
 
@@ -108,15 +104,15 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     #region write all the entries into the DB
 
-                    databaseHandler.UpsertIndicators(Enums.Indicators.EMA, EMAsToSave);
-                    databaseHandler.UpsertIndicators(Enums.Indicators.SMA, SMAsToSave);
-                    databaseHandler.UpsertIndicators(Enums.Indicators.ATR, ATRsToSave);
+                    _databaseHandler.UpsertIndicators(Enums.Indicators.EMA, EMAsToSave);
+                    _databaseHandler.UpsertIndicators(Enums.Indicators.SMA, SMAsToSave);
+                    _databaseHandler.UpsertIndicators(Enums.Indicators.ATR, ATRsToSave);
 
                     #endregion
 
                     if (quotesToCheck.Count == amountOfData)
                     {
-                        Console.WriteLine($"{asset.GetStringValue()} | {timeFrame.GetStringValue()} | {quotes.Last().Date} | wrote to the DB.");
+                        Console.WriteLine($"{_asset.GetStringValue()} | {_timeFrame.GetStringValue()} | {_quotes.Last().Date} | wrote to the DB.");
                     }
 
                     quotesToCheck.Clear();

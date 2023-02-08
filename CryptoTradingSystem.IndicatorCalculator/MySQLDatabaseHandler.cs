@@ -12,48 +12,48 @@ namespace CryptoTradingSystem.IndicatorCalculator
 {
     internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
     {
-        private readonly string connectionString;
+        private readonly string _connectionString;
 
-        public MySQLDatabaseHandler(string _connectionString)
+        public MySQLDatabaseHandler(string connectionString)
         {
-            connectionString = _connectionString;
+            _connectionString = connectionString;
         }
 
-        public List<CustomQuote> GetCandleStickDataFromDatabase(Enums.Assets _asset, Enums.TimeFrames _timeFrame, DateTime _lastCloseTime = new DateTime(), int _amount = 1000)
+        public List<CustomQuote> GetCandleStickDataFromDatabase(Enums.Assets asset, Enums.TimeFrames timeFrame, DateTime lastCloseTime = new DateTime(), int amount = 1000)
         {
-            List<CustomQuote> quotes = new List<CustomQuote>();
+            var quotes = new List<CustomQuote>();
 
-            int currentYear = DateTime.Now.Year;
-            int currentMonth = DateTime.Now.Month;
+            var currentYear = DateTime.Now.Year;
+            var currentMonth = DateTime.Now.Month;
 
-            TimeSpan timeFrame;
+            TimeSpan parsedTimeFrame;
 
-            // Translate timeframe here to do date checks later on
-            if (_timeFrame is Enums.TimeFrames.M5 || _timeFrame is Enums.TimeFrames.M15)
+            switch (timeFrame)
             {
-                timeFrame = TimeSpan.FromMinutes(Convert.ToDouble(_timeFrame.GetStringValue().Trim('m')));
-            }
-            else if (_timeFrame is Enums.TimeFrames.H1 || _timeFrame is Enums.TimeFrames.H4)
-            {
-                timeFrame = TimeSpan.FromHours(Convert.ToDouble(_timeFrame.GetStringValue().Trim('h')));
-            }
-            else if (_timeFrame is Enums.TimeFrames.D1)
-            {
-                timeFrame = TimeSpan.FromDays(Convert.ToDouble(_timeFrame.GetStringValue().Trim('d')));
-            }
-            else
-            {
-                Console.WriteLine($"GetCandleStickDataFromDatabase | {_timeFrame} konnte nicht übersetzt werden");
-                return quotes;
+                // Translate timeframe here to do date checks later on
+                case Enums.TimeFrames.M5:
+                case Enums.TimeFrames.M15:
+                    parsedTimeFrame = TimeSpan.FromMinutes(Convert.ToDouble(timeFrame.GetStringValue().Trim('m')));
+                    break;
+                case Enums.TimeFrames.H1:
+                case Enums.TimeFrames.H4:
+                    parsedTimeFrame = TimeSpan.FromHours(Convert.ToDouble(timeFrame.GetStringValue().Trim('h')));
+                    break;
+                case Enums.TimeFrames.D1:
+                    parsedTimeFrame = TimeSpan.FromDays(Convert.ToDouble(timeFrame.GetStringValue().Trim('d')));
+                    break;
+                default:
+                    Console.WriteLine($"GetCandleStickDataFromDatabase | {timeFrame} konnte nicht übersetzt werden");
+                    return quotes;
             }
 
             try
             {
-                using CryptoTradingSystemContext contextDB = new CryptoTradingSystemContext(connectionString);
+                using var contextDB = new CryptoTradingSystemContext(_connectionString);
 
-                var candlesToCalculate = contextDB.Assets.Where(x => x.AssetName == _asset.GetStringValue() && x.Interval == _timeFrame.GetStringValue() && x.CloseTime >= _lastCloseTime)/*.OrderBy(x => x.CloseTime)*/.Take(_amount);
+                var candlesToCalculate = contextDB.Assets.Where(x => x.AssetName == asset.GetStringValue() && x.Interval == timeFrame.GetStringValue() && x.CloseTime >= lastCloseTime)/*.OrderBy(x => x.CloseTime)*/.Take(amount);
 
-                DateTime previousCandle = DateTime.MinValue;
+                var previousCandle = DateTime.MinValue;
                 foreach (var candle in candlesToCalculate)
                 {
                     // If we do have a previous candle, check if the difference from the current to the previous one is above the timeframe we are looking for
@@ -61,7 +61,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     // Break here then, so we can do a new request and get the new incoming data
                     if (previousCandle != DateTime.MinValue)
                     {
-                        bool gap = (candle.CloseTime - previousCandle) > timeFrame;
+                        var gap = (candle.CloseTime - previousCandle) > parsedTimeFrame;
                         if (gap && candle.CloseTime.Year == currentYear && candle.CloseTime.Month == currentMonth && (previousCandle.Year != currentYear || previousCandle.Month != currentMonth))
                         {
                             break;
@@ -101,28 +101,28 @@ namespace CryptoTradingSystem.IndicatorCalculator
             return quotes;
         }
 
-        public void UpsertIndicators(Enums.Indicators _indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> _data)
+        public void UpsertIndicators(Enums.Indicators indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> data)
         {
             try
             {
-                using CryptoTradingSystemContext contextDB = new CryptoTradingSystemContext(connectionString);
+                using var contextDB = new CryptoTradingSystemContext(_connectionString);
                 using var transaction = contextDB.Database.BeginTransaction();
 
-                foreach (var data in _data)
+                foreach (var keyValuePair in data)
                 {
-                    switch (_indicator)
+                    switch (indicator)
                     {
                         case Enums.Indicators.EMA:
-                            UpdateOrInsertIndicator(contextDB.EMAs, data);
+                            UpdateOrInsertIndicator(contextDB.EMAs, keyValuePair);
                             break;
                         case Enums.Indicators.SMA:
-                            UpdateOrInsertIndicator(contextDB.SMAs, data);
+                            UpdateOrInsertIndicator(contextDB.SMAs, keyValuePair);
                             break;
                         case Enums.Indicators.ATR:
-                            UpdateOrInsertIndicator(contextDB.ATRs, data);
+                            UpdateOrInsertIndicator(contextDB.ATRs, keyValuePair);
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException(nameof(_indicator), _indicator, null);
+                            throw new ArgumentOutOfRangeException(nameof(indicator), indicator, null);
                     }
                 }
 
@@ -136,25 +136,28 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
         }
 
-        private void UpdateOrInsertIndicator<T>(DbSet<T> _databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> _data) where T : Indicator
+        private void UpdateOrInsertIndicator<T>(DbSet<T> databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> data) where T : Indicator
         {
-            var emaValueToCandle = _databaseSet.FirstOrDefault(x => x.AssetName == _data.Key.Asset && x.Interval == _data.Key.Interval && x.OpenTime == _data.Key.OpenTime && x.CloseTime == _data.Key.Date);
+            var emaValueToCandle = databaseSet.FirstOrDefault(x => x.AssetName == data.Key.Asset && x.Interval == data.Key.Interval && x.OpenTime == data.Key.OpenTime && x.CloseTime == data.Key.Date);
 
             if (emaValueToCandle != null)
             {
-                SetProperties(typeof(T), emaValueToCandle, _data.Value);
+                SetProperties(typeof(T), emaValueToCandle, data.Value);
             }
             else
             {
                 var instance = (T)Activator.CreateInstance(typeof(T));
-                instance.AssetName = _data.Key.Asset;
-                instance.Interval = _data.Key.Interval;
-                instance.OpenTime = _data.Key.OpenTime;
-                instance.CloseTime = _data.Key.Date;
+                if (instance == null) 
+                    return;
+                
+                instance.AssetName = data.Key.Asset;
+                instance.Interval = data.Key.Interval;
+                instance.OpenTime = data.Key.OpenTime;
+                instance.CloseTime = data.Key.Date;
 
-                SetProperties(typeof(T), instance, _data.Value);
+                SetProperties(typeof(T), instance, data.Value);
 
-                _databaseSet.Add(instance);
+                databaseSet.Add(instance);
             }
         }
 
@@ -164,29 +167,29 @@ namespace CryptoTradingSystem.IndicatorCalculator
         /// EMA12
         /// EMA20
         /// </summary>
-        /// <param name="_class"></param>
-        /// <param name="_object"></param>
-        /// <param name="_data"></param>
-        private void SetProperties(Type _class, Indicator _object, Dictionary<int, decimal?> _data)
+        /// <param name="classType"></param>
+        /// <param name="indicatorObject"></param>
+        /// <param name="data"></param>
+        private static void SetProperties(Type classType, Indicator indicatorObject, Dictionary<int, decimal?> data)
         {
-            PropertyInfo[] properties = _class.GetProperties();
+            var properties = classType.GetProperties();
 
-            foreach (var timePeriod in _data.Keys)
+            foreach (var timePeriod in data.Keys)
             {
-                foreach (PropertyInfo property in properties)
+                foreach (var property in properties)
                 {
-                    if (property.Name.EndsWith(timePeriod.ToString()))
+                    if (!property.Name.EndsWith(timePeriod.ToString()))
+                        continue;
+                    
+                    if (data[timePeriod] != null)
                     {
-                        if (_data[timePeriod] != null)
-                        {
-                            property.SetValue(_object, _data[timePeriod].Value);
-                        }
-                        else
-                        {
-                            property.SetValue(_object, null);
-                        }
-                        break;
+                        property.SetValue(indicatorObject, data[timePeriod].Value);
                     }
+                    else
+                    {
+                        property.SetValue(indicatorObject, null);
+                    }
+                    break;
                 }
 
             }
