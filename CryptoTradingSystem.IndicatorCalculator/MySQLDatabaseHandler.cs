@@ -20,7 +20,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
             _connectionString = connectionString;
         }
 
-        public List<CustomQuote> GetCandleStickDataFromDatabase(Enums.Assets asset, Enums.TimeFrames timeFrame, DateTime lastCloseTime = new DateTime(), int amount = 1000)
+        public List<CustomQuote> GetCandleStickDataFromDatabase(Enums.Assets asset, Enums.TimeFrames timeFrame, int amount, DateTime lastCloseTime = new DateTime())
         {
             var quotes = new List<CustomQuote>();
 
