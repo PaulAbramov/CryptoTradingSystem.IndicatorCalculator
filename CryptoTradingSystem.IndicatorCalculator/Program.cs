@@ -36,7 +36,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
                 foreach (var timeFrame in (Enums.TimeFrames[])Enum.GetValues(typeof(Enums.TimeFrames)))
                 {
                     var calc = new Calculator(asset, timeFrame, connectionString);
-                    Log.Information("{asset} | {timeFrame} | start to calculate indicators.", asset.GetStringValue(), timeFrame.GetStringValue());
+                    Log.Information("{asset} | " +
+                                    "{timeFrame} | " +
+                                    "start to calculate indicators.", 
+                        asset.GetStringValue(), 
+                        timeFrame.GetStringValue());
                     calcs.Add(calc, Task.Run(() => calc.CalculateIndicatorsAndWriteToDatabase(amountOfData)));
                 }
             }
@@ -51,7 +55,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
                                 calc.Value.Status != TaskStatus.WaitingForActivation))
                 {
                     calc.Value.Dispose();
-                    Log.Information("{asset} | {timeFrame} | restart to calculate indicators.", calc.Key.Asset, calc.Key.TimeFrame);
+                    Log.Information("{asset} | " +
+                                    "{timeFrame} | " +
+                                    "restart to calculate indicators.", 
+                        calc.Key.Asset, 
+                        calc.Key.TimeFrame);
                     calcs[calc.Key] = Task.Run(() => calc.Key.CalculateIndicatorsAndWriteToDatabase(amountOfData));
                     // we have to break here, because we are manipulating the dictionary here and an error gets thrown
                     break;
