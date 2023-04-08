@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CryptoTradingSystem.General.Data;
+using CryptoTradingSystem.General.Database.Models;
 using CryptoTradingSystem.General.Helper;
 using Serilog;
 using Skender.Stock.Indicators;
@@ -46,9 +47,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
             {
                 while (true)
                 {
-                    Log.Debug("{asset} | " +
-                              "{timeFrame} | " +
-                              "getting data from {lastClose}", 
+                    Log.Debug("{Asset} | " +
+                              "{TimeFrame} | " +
+                              "getting data from {LastClose}", 
                         _asset.GetStringValue(), 
                         _timeFrame.GetStringValue(), 
                         _lastAssetCloseTime);
@@ -64,7 +65,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                     if (quotesToCheck != null)
                     {
-                        Log.Debug("{asset} | {timeFrame} | got {amount} back with last date: '{lastDate}'",
+                        Log.Debug("{Asset} | {TimeFrame} | got {Amount} back with last date: '{LastDate}'",
                             _asset.GetStringValue(),
                             _timeFrame.GetStringValue(),
                             quotesToCheck.Count,
@@ -136,17 +137,19 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
                         #region write all the entries into the DB
 
-                        Retry.Do(() => _databaseHandler.UpsertIndicators(Enums.Indicators.EMA, EMAsToSave),
+                        Retry.Do(() => _databaseHandler.UpsertIndicators(typeof(EMA), EMAsToSave),
                             TimeSpan.FromSeconds(1));
-                        Retry.Do(() => _databaseHandler.UpsertIndicators(Enums.Indicators.SMA, SMAsToSave),
+                        Retry.Do(() => _databaseHandler.UpsertIndicators(typeof(SMA), SMAsToSave),
                             TimeSpan.FromSeconds(1));
-                        Retry.Do(() => _databaseHandler.UpsertIndicators(Enums.Indicators.ATR, ATRsToSave),
+                        Retry.Do(() => _databaseHandler.UpsertIndicators(typeof(ATR), ATRsToSave),
                             TimeSpan.FromSeconds(1));
 
                         #endregion
 
-                        Log.Debug("{asset} | {timeFrame} | {LastDate} | wrote to the DB.", _asset.GetStringValue(),
-                            _timeFrame.GetStringValue(), _quotes.Last().Date);
+                        Log.Debug("{Asset} | {TimeFrame} | {LastDate} | wrote to the DB",
+                            _asset.GetStringValue(),
+                            _timeFrame.GetStringValue(),
+                            _quotes.Last().Date);
 
                         quotesToCheck.Clear();
                     }

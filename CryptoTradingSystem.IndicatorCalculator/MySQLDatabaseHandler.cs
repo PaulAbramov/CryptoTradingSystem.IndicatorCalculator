@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using CryptoTradingSystem.General.Data;
 using CryptoTradingSystem.General.Database;
 using CryptoTradingSystem.General.Database.Models;
@@ -50,11 +49,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
 
             try
             {
-                using var contextDB = new CryptoTradingSystemContext(_connectionString);
+                using var contextDb = new CryptoTradingSystemContext(_connectionString);
 
-                if (contextDB.Assets != null)
+                if (contextDb.Assets != null)
                 {
-                    var candlesToCalculate = contextDB.Assets.Where(x => 
+                    var candlesToCalculate = contextDb.Assets.Where(x => 
                             x.AssetName == asset.GetStringValue() && 
                             x.Interval == timeFrame.GetStringValue() && 
                             x.CloseTime >= lastCloseTime)
@@ -72,7 +71,12 @@ namespace CryptoTradingSystem.IndicatorCalculator
                             var gap = (candle.CloseTime - previousCandle) > parsedTimeFrame;
                             if (gap && candle.CloseTime.Year == currentYear && candle.CloseTime.Month == currentMonth && (previousCandle.Year != currentYear || previousCandle.Month != currentMonth))
                             {
-                                Log.Debug("{asset} | {timeFrame} | there is a gap: '{currenctClose}' - '{previousCandle}' = '{result}'", asset.GetStringValue(), timeFrame.GetStringValue(), candle.CloseTime, previousCandle, candle.CloseTime - previousCandle);
+                                Log.Debug("{Asset} | {TimeFrame} | there is a gap: '{CurrenctClose}' - '{PreviousCandle}' = '{Result}'",
+                                    asset.GetStringValue(),
+                                    timeFrame.GetStringValue(),
+                                    candle.CloseTime,
+                                    previousCandle,
+                                    candle.CloseTime - previousCandle);
                                 break;
                             }
                         }
@@ -81,7 +85,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
                             // Do not allow to calculate indicators if we do not have data from the past
                             if (candle.CloseTime.Year == currentYear && (candle.CloseTime.Month == currentMonth || candle.CloseTime.Month == currentMonth - 1))
                             {
-                                Log.Debug("{asset} | {timeFrame} | did start to calculate this year: '{currenctClose}' / '{previousCandle}'", asset.GetStringValue(), timeFrame.GetStringValue(), candle.CloseTime, previousCandle);
+                                Log.Debug("{Asset} | {TimeFrame} | did start to calculate this year: '{CurrenctClose}' / '{PreviousCandle}'",
+                                    asset.GetStringValue(),
+                                    timeFrame.GetStringValue(),
+                                    candle.CloseTime,
+                                    previousCandle);
                                 break;
                             }
                         }
@@ -105,8 +113,8 @@ namespace CryptoTradingSystem.IndicatorCalculator
             }
             catch (Exception e)
             {
-                Log.Error(
-                    "{asset} | {timeFrame} | {lastClose} | could not get candles from Database", 
+                Log.Error(e,
+                    "{Asset} | {TimeFrame} | {LastClose} | could not get candles from Database", 
                     asset.GetStringValue(), 
                     timeFrame.GetStringValue(), 
                     lastCloseTime);
@@ -116,46 +124,47 @@ namespace CryptoTradingSystem.IndicatorCalculator
             return quotes;
         }
 
-        public void UpsertIndicators(Enums.Indicators indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> data)
+        public void UpsertIndicators(Type indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> data)
         {
             try
             {
-                using var contextDB = new CryptoTradingSystemContext(_connectionString);
-                using var transaction = contextDB.Database.BeginTransaction();
+                using var contextDb = new CryptoTradingSystemContext(_connectionString);
+                using var transaction = contextDb.Database.BeginTransaction();
 
                 foreach (var keyValuePair in data)
                 {
                     switch (indicator)
                     {
-                        case Enums.Indicators.EMA:
-                            UpdateOrInsertIndicator(contextDB.EMAs, keyValuePair);
+                        case not null when indicator == typeof(EMA):
+                            UpdateOrInsertIndicator(contextDb.EMAs, keyValuePair);
                             break;
-                        case Enums.Indicators.SMA:
-                            UpdateOrInsertIndicator(contextDB.SMAs, keyValuePair);
+                        case not null when indicator == typeof(SMA):
+                            UpdateOrInsertIndicator(contextDb.SMAs, keyValuePair);
                             break;
-                        case Enums.Indicators.ATR:
-                            UpdateOrInsertIndicator(contextDB.ATRs, keyValuePair);
+                        case not null when indicator == typeof(ATR):
+                            UpdateOrInsertIndicator(contextDb.ATRs, keyValuePair);
                             break;
                         default:
                             throw new ArgumentOutOfRangeException(nameof(indicator), indicator, null);
                     }
                 }
 
-                contextDB.SaveChanges();
+                contextDb.SaveChanges();
                 transaction.Commit();
             }
             catch (Exception e)
             {
-                Log.Error(
-                    "{asset} | {timeFrame} | {indicator} | could not upsert Candles", 
+                Log.Error(e,
+                    "{Asset} | {TimeFrame} | {Indicator} | could not upsert Candles", 
                     data.FirstOrDefault().Key.Asset, 
                     data.FirstOrDefault().Key.Interval, 
-                    indicator.GetStringValue());
+                    indicator?.Name);
                 throw;
             }
         }
 
-        private void UpdateOrInsertIndicator<T>(DbSet<T>? databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> data) where T : Indicator
+        private static void UpdateOrInsertIndicator<T>(DbSet<T>? databaseSet, KeyValuePair<CustomQuote, Dictionary<int, decimal?>> data) 
+            where T : Indicator
         {
             if (databaseSet == null) 
                 return;
@@ -217,7 +226,6 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     }
                     break;
                 }
-
             }
         }
     }

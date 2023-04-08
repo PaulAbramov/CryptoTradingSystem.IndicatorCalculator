@@ -13,6 +13,6 @@ namespace CryptoTradingSystem.IndicatorCalculator.Interfaces
         /// </summary>
         /// <param name="indicator"></param>
         /// <param name="data"></param>
-        void UpsertIndicators(Enums.Indicators indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> data);
+        void UpsertIndicators(Type indicator, Dictionary<CustomQuote, Dictionary<int, decimal?>> data);
     }
 }

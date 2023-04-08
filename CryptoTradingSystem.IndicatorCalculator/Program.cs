@@ -10,7 +10,7 @@ namespace CryptoTradingSystem.IndicatorCalculator
 {
     internal static class Program
     {
-        private static void Main(string[] args)
+        private static void Main()
         {
             IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
 
@@ -18,12 +18,15 @@ namespace CryptoTradingSystem.IndicatorCalculator
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
 #if RELEASE
-                .WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
+                .WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
 #endif
 #if DEBUG
-                .WriteTo.Console()
+                .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
 #endif
-                .WriteTo.File(loggingfilePath, rollingInterval: RollingInterval.Day)
+                .WriteTo.File(loggingfilePath, 
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
 
             var connectionString = config.GetValue<string>("ConnectionString");
@@ -36,9 +39,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
                 foreach (var timeFrame in (Enums.TimeFrames[])Enum.GetValues(typeof(Enums.TimeFrames)))
                 {
                     var calc = new Calculator(asset, timeFrame, connectionString);
-                    Log.Information("{asset} | " +
-                                    "{timeFrame} | " +
-                                    "start to calculate indicators.", 
+                    Log.Information("{Asset} | " +
+                                    "{TimeFrame} | " +
+                                    "start to calculate indicators", 
                         asset.GetStringValue(), 
                         timeFrame.GetStringValue());
                     calcs.Add(calc, Task.Run(() => calc.CalculateIndicatorsAndWriteToDatabase(amountOfData)));
@@ -55,9 +58,9 @@ namespace CryptoTradingSystem.IndicatorCalculator
                                 calc.Value.Status != TaskStatus.WaitingForActivation))
                 {
                     calc.Value.Dispose();
-                    Log.Information("{asset} | " +
-                                    "{timeFrame} | " +
-                                    "restart to calculate indicators.", 
+                    Log.Information("{Asset} | " +
+                                    "{TimeFrame} | " +
+                                    "restart to calculate indicators", 
                         calc.Key.Asset, 
                         calc.Key.TimeFrame);
                     calcs[calc.Key] = Task.Run(() => calc.Key.CalculateIndicatorsAndWriteToDatabase(amountOfData));
