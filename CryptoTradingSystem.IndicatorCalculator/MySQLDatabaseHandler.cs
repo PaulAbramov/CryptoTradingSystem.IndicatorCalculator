@@ -43,7 +43,11 @@ namespace CryptoTradingSystem.IndicatorCalculator
                     parsedTimeFrame = TimeSpan.FromDays(Convert.ToDouble(timeFrame.GetStringValue()?.Trim('d')));
                     break;
                 default:
-                    Console.WriteLine($"GetCandleStickDataFromDatabase | {timeFrame} konnte nicht übersetzt werden");
+                    Log.Warning(
+                        "{Asset} | {TimeFrame} | {LastClose} | timeframe could not be translated",
+                        asset.GetStringValue(),
+                        timeFrame.GetStringValue(),
+                        lastCloseTime);
                     return quotes;
             }
 
