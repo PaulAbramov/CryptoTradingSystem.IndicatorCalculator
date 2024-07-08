@@ -16,6 +16,33 @@ internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
 
 	public MySQLDatabaseHandler(string connectionString) => this.connectionString = connectionString;
 
+	public int GetCandleStickAmount(Enums.Assets asset, Enums.TimeFrames timeFrame)
+	{
+		try
+		{
+			using var contextDb = new CryptoTradingSystemContext(connectionString);
+
+			if (contextDb.Assets != null)
+			{
+				return contextDb.Assets.Count(
+						x =>
+							x.AssetName == asset.GetStringValue()
+							&& x.Interval == timeFrame.GetStringValue());
+			}
+		}
+		catch (Exception e)
+		{
+			Log.Error(
+				e,
+				"{AssetToString} | {TimeFrameToString} | could not get candles amount from Database",
+				asset.GetStringValue(),
+				timeFrame.GetStringValue());
+			throw;
+		}
+
+		return 0;
+	}
+	
 	public List<CustomQuote> GetCandleStickDataFromDatabase(
 		Enums.Assets asset,
 		Enums.TimeFrames timeFrame,
@@ -45,7 +72,7 @@ internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
 				break;
 			default:
 				Log.Warning(
-					"{Asset} | {TimeFrame} | {LastClose} | timeframe could not be translated",
+					"{AssetToString} | {TimeFrameToString} | {LastClose} | timeframe could not be translated",
 					asset.GetStringValue(),
 					timeFrame.GetStringValue(),
 					lastCloseTime);
@@ -81,7 +108,7 @@ internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
 						    && (previousCandle.Year != currentYear || previousCandle.Month != currentMonth))
 						{
 							Log.Debug(
-								"{Asset} | {TimeFrame} | "
+								"{AssetToString} | {TimeFrameToString} | "
 								+ "there is a gap: '{CurrenctClose}' - '{PreviousCandle}' = '{Result}'",
 								asset.GetStringValue(),
 								timeFrame.GetStringValue(),
@@ -98,7 +125,7 @@ internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
 						    && (candle.CloseTime.Month == currentMonth || candle.CloseTime.Month == currentMonth - 1))
 						{
 							Log.Debug(
-								"{Asset} | {TimeFrame} | "
+								"{AssetToString} | {TimeFrameToString} | "
 								+ "did start to calculate this year: '{CurrenctClose}' / '{PreviousCandle}'",
 								asset.GetStringValue(),
 								timeFrame.GetStringValue(),
@@ -130,7 +157,7 @@ internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
 		{
 			Log.Error(
 				e,
-				"{Asset} | {TimeFrame} | {LastClose} | could not get candles from Database",
+				"{AssetToString} | {TimeFrameToString} | {LastClose} | could not get candles from Database",
 				asset.GetStringValue(),
 				timeFrame.GetStringValue(),
 				lastCloseTime);
@@ -172,7 +199,7 @@ internal class MySQLDatabaseHandler : IDatabaseHandlerIndicator
 		{
 			Log.Error(
 				e,
-				"{Asset} | {TimeFrame} | {Indicator} | could not upsert Candles",
+				"{AssetToString} | {TimeFrameToString} | {Indicator} | could not upsert Candles",
 				data.FirstOrDefault().Key.Asset,
 				data.FirstOrDefault().Key.Interval,
 				indicator?.Name);

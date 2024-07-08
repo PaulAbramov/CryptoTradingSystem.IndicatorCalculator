@@ -1,4 +1,5 @@
 ﻿using CryptoTradingSystem.General.Data;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using System;
@@ -36,16 +37,24 @@ internal static class Program
 		var calcs = new Dictionary<Calculator, Task>();
 
 		var amountOfData = config.GetValue<int>("AmountOfData");
+		var lineIndexDictionary = new Dictionary<Enums.Assets, Dictionary<Enums.TimeFrames, int>>();
+		var index = 1;
+		
 		foreach (var asset in (Enums.Assets[]) Enum.GetValues(typeof(Enums.Assets)))
 		{
+			lineIndexDictionary.TryAdd(asset, new Dictionary<Enums.TimeFrames, int>());
+			
 			foreach (var timeFrame in (Enums.TimeFrames[]) Enum.GetValues(typeof(Enums.TimeFrames)))
 			{
+				lineIndexDictionary[asset].TryAdd(timeFrame, index);
+				index++;
+
 				var calc = new Calculator(asset, timeFrame, connectionString);
-				Log.Information(
-					"{Asset} | " + "{TimeFrame} | " + "start to calculate indicators",
-					asset.GetStringValue(),
-					timeFrame.GetStringValue());
-				calcs.Add(calc, Task.Run(() => calc.CalculateIndicatorsAndWriteToDatabase(amountOfData)));
+				//Log.Debug(
+				//	"{AssetToString} | " + "{TimeFrameToString} | " + "start to calculate indicators",
+				//	asset.GetStringValue(),
+				//	timeFrame.GetStringValue());
+				calcs.Add(calc, Task.Run(() => calc.CalculateIndicatorsAndWriteToDatabase(amountOfData, lineIndexDictionary[asset][timeFrame])));
 			}
 		}
 
@@ -60,11 +69,11 @@ internal static class Program
 					         && calc.Value.Status != TaskStatus.WaitingForActivation))
 			{
 				calc.Value.Dispose();
-				Log.Information(
-					"{Asset} | " + "{TimeFrame} | " + "restart to calculate indicators",
-					calc.Key.Asset,
-					calc.Key.TimeFrame);
-				calcs[calc.Key] = Task.Run(() => calc.Key.CalculateIndicatorsAndWriteToDatabase(amountOfData));
+				//Log.Debug(
+				//	"{AssetToString} | " + "{TimeFrameToString} | " + "restart to calculate indicators",
+				//	calc.Key.AssetToString,
+				//	calc.Key.TimeFrameToString);
+				calcs[calc.Key] = Task.Run(() => calc.Key.CalculateIndicatorsAndWriteToDatabase(amountOfData, lineIndexDictionary[calc.Key.Asset][calc.Key.TimeFrame]));
 
 				// we have to break here, because we are manipulating the dictionary here and an error gets thrown
 				break;

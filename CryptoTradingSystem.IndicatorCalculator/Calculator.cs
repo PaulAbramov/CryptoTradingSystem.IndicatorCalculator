@@ -12,62 +12,68 @@ namespace CryptoTradingSystem.IndicatorCalculator;
 
 public class Calculator
 {
-	private readonly Enums.Assets asset;
+	public Enums.Assets Asset { get; }
+	public string? AssetToString => Asset.GetStringValue();
+	public Enums.TimeFrames TimeFrame { get; }
+	public string? TimeFrameToString => TimeFrame.GetStringValue();
+	
 	private readonly List<int> atrtimePeriods = new() { 14 };
 	private readonly List<int> ematimePeriods = new() { 5, 9, 12, 20, 26, 50, 75, 200 };
 	private readonly MySQLDatabaseHandler databaseHandler;
 	private readonly SortedSet<CustomQuote> quotes;
-	private readonly Enums.TimeFrames timeFrame;
 	private DateTime lastAssetCloseTime;
 
 	public Calculator(Enums.Assets asset, Enums.TimeFrames timeFrame, string connectionString)
 	{
-		this.asset = asset;
-		this.timeFrame = timeFrame;
+		Asset = asset;
+		TimeFrame = timeFrame;
 		lastAssetCloseTime = DateTime.MinValue;
 		quotes = new(Comparer<CustomQuote>.Create((a, b) => a.Date.CompareTo(b.Date)));
 
 		databaseHandler = new(connectionString);
 	}
 
-	public string? Asset => asset.GetStringValue();
-
-	public string? TimeFrame => timeFrame.GetStringValue();
-
 	/// <summary>
 	///   Get the data from the database and calculate the indicators
 	///   afterwards write them into the indicatorTables in the database
 	/// </summary>
-	public Task CalculateIndicatorsAndWriteToDatabase(int amountOfData)
+	public Task CalculateIndicatorsAndWriteToDatabase(int amountOfData, int lineIndex)
 	{
 		var taskToWork = Task.Factory.StartNew(
 			() =>
 			{
+				var amountOfDataInDb = databaseHandler.GetCandleStickAmount(Asset, TimeFrame);
+				
+				// Initialize the progress bar
+				var progressBar = new ProgressBar(AssetToString, TimeFrameToString, amountOfDataInDb, lineIndex);
+				var iteration = 1;
+				progressBar.Update(0);
+				
 				while (true)
 				{
-					Log.Debug(
-						"{Asset} | " + "{TimeFrame} | " + "getting data from {LastClose}",
-						asset.GetStringValue(),
-						timeFrame.GetStringValue(),
-						lastAssetCloseTime);
+					//Log.Debug(
+					//	"{AssetToString} | " + "{TimeFrameToString} | " + "getting data from {LastClose}",
+					//	Asset.GetStringValue(),
+					//	TimeFrame.GetStringValue(),
+					//	lastAssetCloseTime);
 
 					// get the candlestick from last saved AssetId for this asset and timeframe
 					var quotesToCheck = Retry.Do(
 						() => databaseHandler.GetCandleStickDataFromDatabase(
-							asset,
-							timeFrame,
+							Asset,
+							TimeFrame,
 							amountOfData,
 							lastAssetCloseTime),
 						TimeSpan.FromSeconds(1));
 
 					if (quotesToCheck != null)
 					{
-						Log.Debug(
-							"{Asset} | {TimeFrame} | got {Amount} back with last date: '{LastDate}'",
-							asset.GetStringValue(),
-							timeFrame.GetStringValue(),
-							quotesToCheck.Count,
-							quotesToCheck.LastOrDefault()?.Date);
+						//Log.Information(
+						//	"{AssetToString} | {TimeFrameToString} | got {Amount} back with last date: '{LastDate}'",
+						//	Asset.GetStringValue(),
+						//	TimeFrame.GetStringValue(),
+						//	quotesToCheck.Count,
+						//	quotesToCheck.LastOrDefault()?.Date);
 
 						if (quotesToCheck.Count == 0)
 						{
@@ -159,11 +165,14 @@ public class Calculator
 
 #endregion
 
-						Log.Debug(
-							"{Asset} | {TimeFrame} | {LastDate} | wrote to the DB",
-							asset.GetStringValue(),
-							timeFrame.GetStringValue(),
-							quotes.Last().Date);
+						//Log.Debug(
+						//	"{AssetToString} | {TimeFrameToString} | {LastDate} | wrote to the DB",
+						//	Asset.GetStringValue(),
+						//	TimeFrame.GetStringValue(),
+						//	quotes.Last().Date);
+						
+						// Update the progress bar
+						progressBar.Update(iteration * amountOfData);
 
 						quotesToCheck.Clear();
 					}
